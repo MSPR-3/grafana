@@ -1,324 +1,157 @@
-# OBRAIL-API — Observatoire ferroviaire européen
+# 📊 Obrail — Monitoring & Observabilité
 
-![Python](https://img.shields.io/badge/Python-3.11-blue.svg)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0%2B-green)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15%2B%20PostGIS-blue)
-![Docker](https://img.shields.io/badge/Docker-Ready-blue)
-![Tests](https://img.shields.io/badge/Tests-pytest-brightgreen)
-![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-orange)
-
-## Contexte
-
-Ce projet s'inscrit dans le cadre du **MSPR**, formation DIADS/DIA.
-L'API **OBRAIL Europe** est le backend central de l'observatoire des données ferroviaires européennes. Elle expose des endpoints REST asynchrones pour consulter les trajets, statistiques, opérateurs, lignes, gares et métriques environnementales.
+Stack de monitoring complète pour le projet **Obrail**, une plateforme de données ferroviaires. Ce repository contient la configuration Prometheus et Promtail pour la collecte des métriques et des logs.
 
 ---
 
-## Vue d'ensemble
+## 🧱 Stack technique
+
+| Outil | Rôle | Port |
+|-------|------|------|
+| **Prometheus** | Collecte des métriques toutes les 15s | 9090 |
+| **Grafana** | Visualisation des dashboards | 3000 |
+| **cAdvisor** | Métriques des conteneurs Docker | 8080 |
+| **postgres_exporter** | Métriques PostgreSQL | 9187 |
+| **prometheus-fastapi-instrumentator** | Métriques HTTP de l'API | 8000 |
+| **Promtail** | Collecte des logs applicatifs | — |
+
+---
+
+## 📁 Structure du repository
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        OBRAIL API                           │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  GET /health              → État de l'API + BDD             │
-│  GET /trajets             → Liste paginée avec filtres      │
-│  GET /trajets/{id}        → Détail d'un trajet              │
-│  GET /operateurs          → Opérateurs ferroviaires         │
-│  GET /lignes              │ Lignes commerciales             │
-│  GET /gares               → Gares + géolocalisation         │
-│  GET /pays                → Référentiel pays                │
-│                                                             │
-│  GET /stats/kpi           → Chiffres clés globaux           │
-│  GET /stats/volumes       → Répartition par groupe          │
-│  GET /stats/comparatif    → Jour vs Nuit                    │
-│  GET /stats/co2           → Émissions CO₂                   │
-│  GET /stats/top-liaisons  → Top liaisons fréquentées        │
-│                                                             │
-│  GET /imports             → Historique des imports          │
-│  GET /imports/stats       → Métriques d'import              │
-│                                                             │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-                    ┌──────┴──────┐
-                    │ PostgreSQL  │
-                    │  + PostGIS  │
-                    └─────────────┘
+grafana/
+├── prometheus.yml        # Configuration des cibles Prometheus
+├── promtail-config.yml   # Configuration Promtail (logs → Loki)
+└── README.md
 ```
 
 ---
 
-## Stack Technique
-
-| Couche | Technologie |
-|---|---|
-| **Framework** | FastAPI (asynchrone) |
-| **Serveur ASGI** | Uvicorn |
-| **Base de données** | PostgreSQL 15 + PostGIS 3.4 |
-| **ORM / Driver** | `databases` (asyncpg) + SQLAlchemy (core) |
-| **Validation** | Pydantic v2 |
-| **Tests** | pytest, httpx, pytest-mock, pytest-cov |
-| **Configuration** | python-dotenv |
-| **Conteneurisation** | Docker + Docker Compose |
-| **CI/CD** | GitHub Actions (lint, tests, build Docker) |
-
----
-
-## Structure du projet
-
-```
-OBRAIL-API/
-├── main.py              # Application FastAPI + tous les endpoints
-├── requirements.txt     # Dépendances Python
-├── Dockerfile           # Image Docker multi-stage
-├── docker-compose.yml   # Orchestration API + BDD
-├── .env.example         # Template de configuration
-├── pytest.ini           # Configuration pytest
-├── conftest.py          # Fixtures de test
-├── tests/               # Tests unitaires et d'intégration
-│   └── test_*.py
-├── .github/workflows/   # Pipelines CI/CD
-│   ├── ci-api.yml       # Tests Pytest avec BDD de test
-│   └── docker-api.yml   # Build & push image Docker
-├── .dockerignore        # Exclusions Docker
-└── README.md            # Ce fichier
-```
-
----
-
-## Installation & Démarrage
+## 🚀 Lancement
 
 ### Prérequis
 
-- Python 3.10+ ou Docker
-- PostgreSQL 15+ avec extension PostGIS (si exécution locale)
+- Docker Desktop installé et démarré
+- L'API Obrail qui tourne sur le port `8000`
+- PostgreSQL qui tourne sur le port `5434`
 
-### Option 1 : Docker (Recommandé)
-
-```powershell
-cd OBRAIL-API
-docker-compose up -d --build
-```
-
-L'API est accessible sur **http://localhost:8000**.
-
-### Option 2 : Environnement local
-
-1. **Créer la base de données** (voir OBRAIL-BDD pour le script d'initialisation)
-
-2. **Configurer les variables d'environnement** :
-   ```powershell
-   copy .env.example .env
-   ```
-   Modifier `DATABASE_URL` dans le fichier `.env` :
-   ```env
-   DATABASE_URL=postgresql+asyncpg://obrail_user:obrail_pass@localhost:5434/obrail
-   ```
-
-3. **Installer les dépendances** :
-   ```powershell
-   python -m venv venv
-   .\venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-
-4. **Lancer le serveur** :
-   ```powershell
-   uvicorn main:app --reload --host 0.0.0.0 --port 8000
-   ```
-
----
-
-## Documentation de l'API
-
-FastAPI génère automatiquement la documentation interactive :
-
-| Interface | URL |
-|---|---|
-| **Swagger UI** | http://localhost:8000/docs |
-| **ReDoc** | http://localhost:8000/redoc |
-
----
-
-## Endpoints détaillés
-
-### Système & Santé
-
-#### `GET /health`
-Vérifie l'état de l'API et la connexion à la base de données.
-
-```json
-{
-  "status": "ok",
-  "timestamp": "2026-05-06T12:00:00Z",
-  "components": {
-    "db": "ok"
-  }
-}
-```
-
-### Trajets & Mobilité
-
-#### `GET /trajets`
-Liste paginée des trajets avec filtres.
-
-**Paramètres de requête** :
-| Paramètre | Type | Description |
-|---|---|---|
-| `page` | int | Numéro de page (défaut: 1) |
-| `limit` | int | Taille de page (défaut: 15) |
-| `operateur` | string | Filtrer par opérateur |
-| `ligne` | string | Filtrer par ligne |
-| `pays_depart` | string | Pays de départ |
-| `pays_arrivee` | string | Pays d'arrivée |
-
-#### `GET /trajets/{id_trajet}`
-Détails complets d'un trajet avec gare de départ/arrivée, ligne et opérateur.
-
-### Statistiques & KPIs
-
-#### `GET /stats/kpi`
-Chiffres clés globaux.
-
-```json
-{
-  "total_trajets": 1250,
-  "trajets_jour": 820,
-  "trajets_nuit": 430,
-  "total_operateurs": 5,
-  "total_lignes": 28,
-  "total_gares": 142,
-  "total_pays": 12,
-  "co2_total_kg": 3145.67,
-  "co2_moyen_kg": 2.52,
-  "duree_moyenne_minutes": 187
-}
-```
-
-#### `GET /stats/volumes?groupby=operateur`
-Répartition des volumes par catégorie.
-
-**Paramètre `groupby`** : `operateur`, `ligne`, `pays_depart`, `creneau_horaire`
-
-#### `GET /stats/comparatif-jour-nuit`
-Comparaison détaillée jour vs nuit (nombre de trajets, durée moyenne, émissions CO₂).
-
-#### `GET /stats/co2`
-Statistiques environnementales par opérateur et par ligne.
-
-### Référentiels
-
-| Endpoint | Description |
-|---|---|
-| `GET /operateurs` | Liste des opérateurs ferroviaires |
-| `GET /lignes` | Liste des lignes commerciales |
-| `GET /gares` | Liste des gares (filtre par pays et bounding box) |
-| `GET /pays` | Référentiel des pays couverts |
-
-### Importation
-
-| Endpoint | Description |
-|---|---|
-| `GET /imports` | Historique des imports avec pagination |
-| `GET /imports/stats` | Métriques de réussite/échec des imports |
-
----
-
-## Tests
-
-### Exécuter les tests
+### 1. Lancer cAdvisor
 
 ```powershell
-pytest tests/ --asyncio-mode=auto --cov=. --cov-report=html
+docker run -d --name cadvisor -p 8080:8080 `
+  --volume=/:/rootfs:ro `
+  --volume=/var/run:/var/run:ro `
+  --volume=/sys:/sys:ro `
+  --volume=/var/lib/docker/:/var/lib/docker:ro `
+  gcr.io/cadvisor/cadvisor:latest
 ```
 
-### Pipeline CI des tests
-
-Le workflow `ci-api.yml` exécute automatiquement les tests à chaque push/PR :
-
-1. Clone le repo API + le repo BDD (pour le schéma SQL)
-2. Lance un container PostgreSQL/PostGIS
-3. Initialise la base avec le schéma
-4. Exécute pytest avec couverture de code
-
----
-
-## Docker
-
-### Image Docker
-
-Le Dockerfile utilise Python 3.11-slim pour une image légère :
-
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-EXPOSE 8000
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-### CI/CD — Build & Push automatisé
-
-Le workflow `docker-api.yml` construit et pousse l'image sur GHCR :
-
-| Événement | Tag Docker |
-|---|---|
-| Push `main` | `ghcr.io/mspr-3/obrail-api:main` |
-| Push `develop` | `ghcr.io/mspr-3/obrail-api:develop` |
-| Tag `v1.2.0` | `ghcr.io/mspr-3/obrail-api:1.2.0` |
-| PR #42 | `ghcr.io/mspr-3/obrail-api:pr-42` |
-
-### Récupérer l'image
+### 2. Lancer postgres_exporter
 
 ```powershell
-docker pull ghcr.io/mspr-3/obrail-api:main
-docker run -p 8000:8000 ghcr.io/mspr-3/obrail-api:main
+docker run -d `
+  --name postgres_exporter `
+  -p 9187:9187 `
+  -e DATA_SOURCE_NAME="postgresql://obrail_user:obrail_pass@host.docker.internal:5434/obrail?sslmode=disable" `
+  prometheuscommunity/postgres-exporter
+```
+
+### 3. Lancer Prometheus
+
+```powershell
+docker run -d --name prometheus -p 9090:9090 `
+  -v ${PWD}/prometheus.yml:/etc/prometheus/prometheus.yml `
+  prom/prometheus
+```
+
+### 4. Lancer Grafana
+
+```powershell
+docker run -d --name grafana -p 3000:3000 grafana/grafana
 ```
 
 ---
 
-## Architecture d'intégration
+## ⚙️ Configuration Prometheus
 
+Le fichier `prometheus.yml` définit trois cibles surveillées :
+
+| Job | Cible | Description |
+|-----|-------|-------------|
+| `obrail-api` | `host.docker.internal:8000` | API FastAPI — métriques HTTP |
+| `cadvisor` | `host.docker.internal:8080` | Conteneurs Docker — CPU, RAM, réseau |
+| `postgres` | `host.docker.internal:9187` | Base de données PostgreSQL |
+
+L'intervalle de collecte est de **15 secondes**.
+
+---
+
+## 📈 Dashboards Grafana
+
+Quatre dashboards ont été configurés manuellement dans Grafana :
+
+### 🔵 Dashboard API
+- Latence p50 / p95 / p99
+- Taux de requêtes par seconde par endpoint
+- Taux d'erreurs 5xx
+- Requêtes en cours de traitement
+
+### 🟠 Dashboard Infrastructure Docker
+- CPU total des conteneurs
+- Mémoire utilisée vs disponible
+- Trafic réseau entrant/sortant
+- Métriques par conteneur
+
+### 🟣 Dashboard PostgreSQL
+- Statut de la base (UP/DOWN)
+- Connexions actives
+- Cache hit ratio
+- Transactions par seconde
+- Taille des tables métier (`gare`, `ligne`, `trajet`, `localisation`, `operateur`)
+- Locks actifs et WAL
+
+### 🟢 Dashboard Métier
+- Consultations par endpoint sur 24h
+- Répartition des pages (donut chart)
+- Fréquence d'usage en temps réel
+- Classement des pages par popularité
+
+---
+
+## 📝 Logging applicatif
+
+Le logging est configuré dans `main.py` via le module Python `logging` :
+
+```python
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.StreamHandler(),       # affiche dans le terminal
+        logging.FileHandler("app.log") # écrit dans app.log
+    ]
+)
 ```
-┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
-│  OBRAIL-Frontend │────▶│   OBRAIL-API     │────▶│   OBRAIL-BDD    │
-│  (React/Vite)    │     │  (FastAPI)       │     │  (PostgreSQL)    │
-│   Port 5173      │     │   Port 8000      │     │   Port 5434      │
-└──────────────────┘     └──────────────────┘     └──────────────────┘
-```
+
+Les logs sont écrits simultanément dans le **terminal** et dans le fichier **`app.log`**.
+
+Le fichier `promtail-config.yml` est prévu pour envoyer ces logs vers **Loki** afin de les visualiser dans Grafana.
 
 ---
 
-## Configuration avancée
+## 🔴 Alertes configurées
 
-### Variables d'environnement
-
-| Variable | Description | Exemple |
-|---|---|---|
-| `DATABASE_URL` | Chaîne de connexion asyncpg | `postgresql+asyncpg://user:pass@host:5432/db` |
-
-### CORS & Sécurité
-
-L'API peut être configurée avec des middlewares CORS pour restreindre les origines autorisées.
-
----
-
-## Qualité de code
-
-### Husky + Hooks
-
-Le projet utilise Husky pour exécuter des vérifications avant chaque commit.
-
-### Conventions
-
-- Code asynchrone avec `async/await`
-- Validation Pydantic pour tous les schémas de réponse
-- Tests couvrant les endpoints critiques
+| Alerte | Seuil | Sévérité |
+|--------|-------|----------|
+| Latence p95 API | > 500ms / 5 min | ⚠️ Warning |
+| Taux d'erreurs 5xx | > 1% / 2 min | 🔴 Critical |
+| Endpoint /health indisponible | 3 échecs / 3 min | 🔴 Critical |
+| CPU conteneur API | > 80% / 10 min | ⚠️ Warning |
+| Mémoire conteneur API | > 90% | 🔴 Critical |
+| Connexions PostgreSQL | > 90% du pool / 5 min | ⚠️ Warning |
+| Transactions idle in transaction | > 20 / 5 min | ⚠️ Warning |
+| Échec import quotidien | 0 insertion / 24h | 🔴 Critical |
 
 ---
 
-## Licence
-
-Projet pédagogique. Usage interne — DIADS/DIA.
