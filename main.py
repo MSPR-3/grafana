@@ -112,7 +112,7 @@ def normalize_groupby(value: str) -> str:
 
 app = FastAPI(
     title="ObRail Europe API",
-    description="API REST adaptée à la base ObRail Europe",
+    description="API REST adaptée à la base ObRail Europe !",
     version="3.0.0",
     lifespan=lifespan,
 )
